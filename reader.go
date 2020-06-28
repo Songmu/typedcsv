@@ -49,7 +49,7 @@
 //
 //	{`Multi-line
 //	field`, `comma is ,`}
-package csv
+package typedcsv
 
 import (
 	"bufio"
