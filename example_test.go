@@ -1,3 +1,7 @@
+// Copyright 2020 Songmu.
+// This is copied from Go source code and modified by Songmu.
+// Here is the original copyright notice:
+
 // Copyright 2015 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
