@@ -141,11 +141,6 @@ type Reader struct {
 	// This is done even if the field delimiter, Comma, is white space.
 	TrimLeadingSpace bool
 
-	// ReuseRecord controls whether calls to Read may return a slice sharing
-	// the backing array of the previous call's returned slice for performance.
-	// By default, each call to Read returns newly allocated memory owned by the caller.
-	ReuseRecord bool
-
 	TrailingComma bool // Deprecated: No longer used.
 
 	r *bufio.Reader
@@ -165,9 +160,6 @@ type Reader struct {
 	// fieldIndexes is an index of fields inside recordBuffer.
 	// The i'th field ends at offset fieldIndexes[i] in recordBuffer.
 	fieldIndexes []int
-
-	// lastRecord is a record cache and only used when ReuseRecord == true.
-	lastRecord []string
 }
 
 // NewReader returns a new Reader that reads from r.
@@ -184,16 +176,8 @@ func NewReader(r io.Reader) *Reader {
 // Except for that case, Read always returns either a non-nil
 // record or a non-nil error, but not both.
 // If there is no data left to be read, Read returns nil, io.EOF.
-// If ReuseRecord is true, the returned slice may be shared
-// between multiple calls to Read.
 func (r *Reader) Read() (record []string, err error) {
-	if r.ReuseRecord {
-		record, err = r.readRecord(r.lastRecord)
-		r.lastRecord = record
-	} else {
-		record, err = r.readRecord(nil)
-	}
-	return record, err
+	return r.readRecord()
 }
 
 // ReadAll reads all the remaining records from r.
@@ -203,7 +187,7 @@ func (r *Reader) Read() (record []string, err error) {
 // reported.
 func (r *Reader) ReadAll() (records [][]string, err error) {
 	for {
-		record, err := r.readRecord(nil)
+		record, err := r.readRecord()
 		if err == io.EOF {
 			return records, nil
 		}
@@ -258,7 +242,7 @@ func nextRune(b []byte) rune {
 	return r
 }
 
-func (r *Reader) readRecord(dst []string) ([]string, error) {
+func (r *Reader) readRecord() ([]string, error) {
 	if r.Comma == r.Comment || !validDelim(r.Comma) || (r.Comment != 0 && !validDelim(r.Comment)) {
 		return nil, errInvalidDelim
 	}
@@ -382,11 +366,7 @@ parseField:
 	// Create a single string and create slices out of it.
 	// This pins the memory of the fields together, but allocates once.
 	str := string(r.recordBuffer) // Convert to string once to batch allocations
-	dst = dst[:0]
-	if cap(dst) < len(r.fieldIndexes) {
-		dst = make([]string, len(r.fieldIndexes))
-	}
-	dst = dst[:len(r.fieldIndexes)]
+	dst := make([]string, len(r.fieldIndexes))
 	var preIdx int
 	for i, idx := range r.fieldIndexes {
 		dst[i] = str[preIdx:idx]
