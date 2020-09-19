@@ -133,10 +133,6 @@ type Reader struct {
 	// made and records may have a variable number of fields.
 	FieldsPerRecord int
 
-	// If LazyQuotes is true, a quote may appear in an unquoted field and a
-	// non-doubled quote may appear in a quoted field.
-	LazyQuotes bool
-
 	// If TrimLeadingSpace is true, leading white space in a field is ignored.
 	// This is done even if the field delimiter, Comma, is white space.
 	TrimLeadingSpace bool
@@ -289,12 +285,10 @@ parseField:
 				field = field[:len(field)-lengthNL(field)]
 			}
 			// Check to make sure a quote does not appear in field.
-			if !r.LazyQuotes {
-				if j := bytes.IndexByte(field, '"'); j >= 0 {
-					col := utf8.RuneCount(fullLine[:len(fullLine)-len(line[j:])])
-					err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: ErrBareQuote}
-					break parseField
-				}
+			if j := bytes.IndexByte(field, '"'); j >= 0 {
+				col := utf8.RuneCount(fullLine[:len(fullLine)-len(line[j:])])
+				err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: ErrBareQuote}
+				break parseField
 			}
 			r.recordBuffer = append(r.recordBuffer, field...)
 			r.fieldIndexes = append(r.fieldIndexes, len(r.recordBuffer))
@@ -326,9 +320,6 @@ parseField:
 						// `"\n` sequence (end of line).
 						r.fieldIndexes = append(r.fieldIndexes, len(r.recordBuffer))
 						break parseField
-					case r.LazyQuotes:
-						// `"` sequence (bare quote).
-						r.recordBuffer = append(r.recordBuffer, '"')
 					default:
 						// `"*` sequence (invalid non-escaped quote).
 						col := utf8.RuneCount(fullLine[:len(fullLine)-len(line)-quoteLen])
@@ -348,7 +339,7 @@ parseField:
 					fullLine = line
 				} else {
 					// Abrupt end of file (EOF or error).
-					if !r.LazyQuotes && errRead == nil {
+					if errRead == nil {
 						col := utf8.RuneCount(fullLine)
 						err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: ErrQuote}
 						break parseField
