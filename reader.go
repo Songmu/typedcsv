@@ -137,6 +137,8 @@ type Reader struct {
 	// This is done even if the field delimiter, Comma, is white space.
 	TrimLeadingSpace bool
 
+	Strict bool
+
 	r *bufio.Reader
 
 	// numLine is the current line being read in the CSV file.
@@ -259,13 +261,17 @@ func (r *Reader) readRecord() ([]Value, error) {
 	var (
 		recordBuf strings.Builder
 		ret       []Value
-		appendRet = func(quoted bool) []Value {
-			ret = append(ret, &valueAny{
+		appendRet = func(quoted bool) ([]Value, error) {
+			v, err := (&valueAny{
 				value:  recordBuf.String(),
 				quoted: quoted,
-			})
+			}).guess(r.Strict)
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, v)
 			recordBuf.Reset()
-			return ret
+			return ret, nil
 		}
 	)
 parseField:
@@ -289,7 +295,11 @@ parseField:
 				break parseField
 			}
 			recordBuf.Write(field)
-			ret = appendRet(false)
+			ret, err = appendRet(false)
+			if err != nil {
+				err = &ParseError{StartLine: recLine, Line: r.numLine, Err: err}
+				break parseField
+			}
 			if i >= 0 {
 				line = line[i+commaLen:]
 				continue parseField
@@ -312,11 +322,21 @@ parseField:
 					case rn == r.Comma:
 						// `",` sequence (end of field).
 						line = line[commaLen:]
-						ret = appendRet(true)
+						ret, err = appendRet(true)
+						if err != nil {
+							col := utf8.RuneCount(fullLine[:len(fullLine)-len(line)-quoteLen])
+							err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: err}
+							break parseField
+						}
 						continue parseField
 					case lengthNL(line) == len(line):
 						// `"\n` sequence (end of line).
-						ret = appendRet(true)
+						ret, err = appendRet(true)
+						if err != nil {
+							col := utf8.RuneCount(fullLine[:len(fullLine)-len(line)-quoteLen])
+							err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: err}
+							break parseField
+						}
 						break parseField
 					default:
 						// `"*` sequence (invalid non-escaped quote).
@@ -342,7 +362,12 @@ parseField:
 						err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: ErrQuote}
 						break parseField
 					}
-					ret = appendRet(true)
+					ret, err = appendRet(true)
+					if err != nil {
+						col := utf8.RuneCount(fullLine[:len(fullLine)-len(line)-quoteLen])
+						err = &ParseError{StartLine: recLine, Line: r.numLine, Column: col, Err: err}
+						break parseField
+					}
 					break parseField
 				}
 			}
