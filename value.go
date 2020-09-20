@@ -8,6 +8,7 @@ import (
 )
 
 type Value interface {
+	Type() Type
 	String() string
 	Quoted() bool
 }
@@ -18,6 +19,10 @@ type valueAny struct {
 }
 
 var _ Value = (*valueAny)(nil)
+
+func (vb *valueAny) Type() Type {
+	return TypeAny
+}
 
 func (vb *valueAny) String() string {
 	return vb.value
@@ -32,7 +37,7 @@ func (vb *valueAny) guess(loose bool) (Value, error) {
 		return String(vb.value), nil
 	}
 	switch strings.ToLower(vb.value) {
-	case "null":
+	case "", "null":
 		return Null(), nil
 	case "true", "false":
 		return Bool(strings.ToLower(vb.value) == "true"), nil
@@ -72,21 +77,25 @@ type valueString struct {
 
 var _ Value = (*valueString)(nil)
 
-func (vb *valueString) String() string {
-	return vb.value
+func (vs *valueString) Type() Type {
+	return TypeString
 }
 
-func (vb *valueString) Quoted() bool {
+func (vs *valueString) String() string {
+	return vs.value
+}
+
+func (vs *valueString) Quoted() bool {
 	return true
-}
-
-func String(str string) Value {
-	return &valueString{value: str}
 }
 
 type valueNull struct{}
 
 var _ Value = (*valueNull)(nil)
+
+func (vn *valueNull) Type() Type {
+	return TypeNull
+}
 
 func (vn *valueNull) String() string {
 	return "null"
@@ -96,28 +105,22 @@ func (vn *valueNull) Quoted() bool {
 	return false
 }
 
-var null *valueNull
-
-func Null() Value {
-	return null
-}
-
 type valueBool struct {
 	bool bool
 }
 
 var _ Value = (*valueBool)(nil)
 
-func (vn *valueBool) String() string {
-	return fmt.Sprintf("%v", vn.bool)
+func (vb *valueBool) Type() Type {
+	return TypeBool
 }
 
-func (vn *valueBool) Quoted() bool {
+func (vb *valueBool) String() string {
+	return fmt.Sprintf("%v", vb.bool)
+}
+
+func (vb *valueBool) Quoted() bool {
 	return false
-}
-
-func Bool(bool bool) Value {
-	return &valueBool{bool: bool}
 }
 
 type valueNumber struct {
@@ -128,6 +131,10 @@ type valueNumber struct {
 }
 
 var _ Value = (*valueNumber)(nil)
+
+func (vn *valueNumber) Type() Type {
+	return TypeNumber
+}
 
 func (vn *valueNumber) String() string {
 	if vn.rawValue != "" {
@@ -143,23 +150,16 @@ func (vn *valueNumber) Quoted() bool {
 	return false
 }
 
-func Int(i int64) Value {
-	return &valueNumber{
-		isInt: true,
-		int:   i,
-	}
-}
-
-func Float(f float64) Value {
-	return &valueNumber{float: f}
-}
-
 type valueTime struct {
 	time     time.Time
 	rawValue string
 }
 
 var _ Value = (*valueTime)(nil)
+
+func (vt *valueTime) Type() Type {
+	return TypeTime
+}
 
 func (vt *valueTime) String() string {
 	if vt.rawValue != "" {
@@ -170,8 +170,4 @@ func (vt *valueTime) String() string {
 
 func (vt *valueTime) Quoted() bool {
 	return false
-}
-
-func Time(ti time.Time) Value {
-	return &valueTime{time: ti}
 }
