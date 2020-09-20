@@ -32,13 +32,13 @@ func (vb *valueAny) Quoted() bool {
 	return vb.quoted
 }
 
-func (vb *valueAny) guess(loose bool) (Value, error) {
+func (vb *valueAny) guess(strict bool) (Value, error) {
 	if vb.quoted {
 		return String(vb.value), nil
 	}
 	switch strings.ToLower(vb.value) {
 	case "", "null":
-		return Null(), nil
+		return &valueNull{rawValue: &vb.value}, nil
 	case "true", "false":
 		return Bool(strings.ToLower(vb.value) == "true"), nil
 	}
@@ -57,18 +57,10 @@ func (vb *valueAny) guess(loose bool) (Value, error) {
 		return &valueTime{time: ti, rawValue: vb.value}, nil
 	}
 
-	if loose {
+	if !strict {
 		return vb, nil
 	}
 	return nil, fmt.Errorf("can't guess the type for unquoted value: %s", vb.value)
-}
-
-func (vb *valueAny) mustGuess(loose bool) Value {
-	v, err := vb.guess(loose)
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 type valueString struct {
@@ -89,7 +81,9 @@ func (vs *valueString) Quoted() bool {
 	return true
 }
 
-type valueNull struct{}
+type valueNull struct {
+	rawValue *string
+}
 
 var _ Value = (*valueNull)(nil)
 
@@ -98,6 +92,9 @@ func (vn *valueNull) Type() Type {
 }
 
 func (vn *valueNull) String() string {
+	if vn.rawValue != nil {
+		return *vn.rawValue
+	}
 	return "null"
 }
 
