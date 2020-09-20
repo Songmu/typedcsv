@@ -262,10 +262,14 @@ func (r *Reader) readRecord() ([]Value, error) {
 		recordBuf strings.Builder
 		ret       []Value
 		appendRet = func(quoted bool) ([]Value, error) {
-			ret = append(ret, &valueAny{
+			v, err := (&valueAny{
 				value:  recordBuf.String(),
 				quoted: quoted,
-			})
+			}).guess(r.Strict)
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, v)
 			recordBuf.Reset()
 			return ret, nil
 		}
