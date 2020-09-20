@@ -3,6 +3,8 @@
 - Quoted fields are explicitly string
 - Unquoted fields are guessed of types
     - null
+        - "null" as a NULL
+        - unquoted empty string as a NULL
     - number
         - integer
         - decimal(?)

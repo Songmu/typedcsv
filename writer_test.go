@@ -68,7 +68,7 @@ func TestWrite(t *testing.T) {
 		for i, fields := range tt.Input {
 			input[i] = make([]Value, len(fields))
 			for j, f := range fields {
-				input[i][j] = &valueBackend{
+				input[i][j] = &valueAny{
 					value:  f,
 					quoted: fieldNeedsQuotes(f, comma),
 				}

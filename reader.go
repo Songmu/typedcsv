@@ -260,7 +260,7 @@ func (r *Reader) readRecord() ([]Value, error) {
 		recordBuf strings.Builder
 		ret       []Value
 		appendRet = func(quoted bool) []Value {
-			ret = append(ret, &valueBackend{
+			ret = append(ret, &valueAny{
 				value:  recordBuf.String(),
 				quoted: quoted,
 			})
