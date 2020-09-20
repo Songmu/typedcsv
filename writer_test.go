@@ -60,7 +60,21 @@ func TestWrite(t *testing.T) {
 		if tt.Comma != 0 {
 			f.Comma = tt.Comma
 		}
-		err := f.WriteAll(tt.Input)
+		comma := f.Comma
+		if comma == 0 {
+			comma = ','
+		}
+		input := make([][]Value, len(tt.Input))
+		for i, fields := range tt.Input {
+			input[i] = make([]Value, len(fields))
+			for j, f := range fields {
+				input[i][j] = &valueBackend{
+					value:  f,
+					quoted: fieldNeedsQuotes(f, comma),
+				}
+			}
+		}
+		err := f.WriteAll(input)
 		if err != tt.Error {
 			t.Errorf("Unexpected error:\ngot  %v\nwant %v", err, tt.Error)
 		}
@@ -80,7 +94,7 @@ func (e errorWriter) Write(b []byte) (int, error) {
 func TestError(t *testing.T) {
 	b := &bytes.Buffer{}
 	f := NewWriter(b)
-	f.Write([]string{"abc"})
+	f.Write([]Value{String("abc")})
 	f.Flush()
 	err := f.Error()
 
@@ -89,28 +103,11 @@ func TestError(t *testing.T) {
 	}
 
 	f = NewWriter(errorWriter{})
-	f.Write([]string{"abc"})
+	f.Write([]Value{String("abc")})
 	f.Flush()
 	err = f.Error()
 
 	if err == nil {
 		t.Error("Error should not be nil")
-	}
-}
-
-var benchmarkWriteData = [][]string{
-	{"abc", "def", "12356", "1234567890987654311234432141542132"},
-	{"abc", "def", "12356", "1234567890987654311234432141542132"},
-	{"abc", "def", "12356", "1234567890987654311234432141542132"},
-}
-
-func BenchmarkWrite(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		w := NewWriter(&bytes.Buffer{})
-		err := w.WriteAll(benchmarkWriteData)
-		if err != nil {
-			b.Fatal(err)
-		}
-		w.Flush()
 	}
 }

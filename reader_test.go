@@ -28,7 +28,6 @@ func TestRead(t *testing.T) {
 		Comment            rune
 		UseFieldsPerRecord bool // false (default) means FieldsPerRecord is -1
 		FieldsPerRecord    int
-		LazyQuotes         bool
 		TrimLeadingSpace   bool
 	}{{
 		Name:   "Simple",
@@ -108,21 +107,6 @@ field"`,
 		Name:   "NoComment",
 		Input:  "#1,2,3\na,b,c",
 		Output: [][]string{{"#1", "2", "3"}, {"a", "b", "c"}},
-	}, {
-		Name:       "LazyQuotes",
-		Input:      `a "word","1"2",a","b`,
-		Output:     [][]string{{`a "word"`, `1"2`, `a"`, `b`}},
-		LazyQuotes: true,
-	}, {
-		Name:       "BareQuotes",
-		Input:      `a "word","1"2",a"`,
-		Output:     [][]string{{`a "word"`, `1"2`, `a"`}},
-		LazyQuotes: true,
-	}, {
-		Name:       "BareDoubleQuotes",
-		Input:      `a""b,c`,
-		Output:     [][]string{{`a""b`, `c`}},
-		LazyQuotes: true,
 	}, {
 		Name:  "BadDoubleQuotes",
 		Input: `a""b,c`,
@@ -323,11 +307,6 @@ x,,,
 		Input: "\"foo\"bar\"\r\n",
 		Error: &ParseError{StartLine: 1, Line: 1, Column: 4, Err: ErrQuote},
 	}, {
-		Name:       "LazyQuoteWithTrailingCRLF",
-		Input:      "\"foo\"bar\"\r\n",
-		Output:     [][]string{{`foo"bar`}},
-		LazyQuotes: true,
-	}, {
 		Name:   "DoubleQuoteWithTrailingCRLF",
 		Input:  "\"foo\"\"bar\"\r\n",
 		Output: [][]string{{`foo"bar`}},
@@ -339,11 +318,6 @@ x,,,
 		Name:  "OddQuotes",
 		Input: `"""""""`,
 		Error: &ParseError{StartLine: 1, Line: 1, Column: 7, Err: ErrQuote},
-	}, {
-		Name:       "LazyOddQuotes",
-		Input:      `"""""""`,
-		Output:     [][]string{{`"""`}},
-		LazyQuotes: true,
 	}, {
 		Name:  "BadComma1",
 		Comma: '\n',
@@ -392,10 +366,19 @@ x,,,
 			} else {
 				r.FieldsPerRecord = -1
 			}
-			r.LazyQuotes = tt.LazyQuotes
 			r.TrimLeadingSpace = tt.TrimLeadingSpace
 
-			out, err := r.ReadAll()
+			records, err := r.ReadAll()
+			var out [][]string
+			if records != nil {
+				out = make([][]string, len(records))
+				for i, fields := range records {
+					out[i] = make([]string, len(fields))
+					for j, field := range fields {
+						out[i][j] = field.String()
+					}
+				}
+			}
 			if !reflect.DeepEqual(err, tt.Error) {
 				t.Errorf("ReadAll() error:\ngot  %v\nwant %v", err, tt.Error)
 			} else if !reflect.DeepEqual(out, tt.Output) {

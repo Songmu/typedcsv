@@ -49,12 +49,12 @@ func NewWriter(w io.Writer) *Writer {
 // A record is a slice of strings with each string being one field.
 // Writes are buffered, so Flush must eventually be called to ensure
 // that the record is written to the underlying io.Writer.
-func (w *Writer) Write(record []string) error {
+func (w *Writer) Write(record []Value) error {
 	if !validDelim(w.Comma) {
 		return errInvalidDelim
 	}
 
-	for n, field := range record {
+	for n, v := range record {
 		if n > 0 {
 			if _, err := w.w.WriteRune(w.Comma); err != nil {
 				return err
@@ -63,8 +63,8 @@ func (w *Writer) Write(record []string) error {
 
 		// If we don't have to have a quoted field then just
 		// write out the field and continue to the next field.
-		if !w.fieldNeedsQuotes(field) {
-			if _, err := w.w.WriteString(field); err != nil {
+		if !v.Quoted() {
+			if _, err := w.w.WriteString(v.String()); err != nil {
 				return err
 			}
 			continue
@@ -73,6 +73,7 @@ func (w *Writer) Write(record []string) error {
 		if err := w.w.WriteByte('"'); err != nil {
 			return err
 		}
+		field := v.String()
 		for len(field) > 0 {
 			// Search for special characters.
 			i := strings.IndexAny(field, "\"\r\n")
@@ -136,7 +137,7 @@ func (w *Writer) Error() error {
 
 // WriteAll writes multiple CSV records to w using Write and then calls Flush,
 // returning any error from the Flush.
-func (w *Writer) WriteAll(records [][]string) error {
+func (w *Writer) WriteAll(records [][]Value) error {
 	for _, record := range records {
 		err := w.Write(record)
 		if err != nil {
@@ -159,6 +160,11 @@ func (w *Writer) WriteAll(records [][]string) error {
 // of Microsoft Excel and Google Drive.
 // For Postgres, quote the data terminating string `\.`.
 func (w *Writer) fieldNeedsQuotes(field string) bool {
+	return fieldNeedsQuotes(field, w.Comma)
+}
+
+func fieldNeedsQuotes(field string, comma rune) bool {
+
 	if field == "" {
 		return false
 	}
@@ -167,19 +173,20 @@ func (w *Writer) fieldNeedsQuotes(field string) bool {
 		return true
 	}
 
-	if w.Comma < utf8.RuneSelf {
+	if comma < utf8.RuneSelf {
 		for i := 0; i < len(field); i++ {
 			c := field[i]
-			if c == '\n' || c == '\r' || c == '"' || c == byte(w.Comma) {
+			if c == '\n' || c == '\r' || c == '"' || c == byte(comma) {
 				return true
 			}
 		}
 	} else {
-		if strings.ContainsRune(field, w.Comma) || strings.ContainsAny(field, "\"\r\n") {
+		if strings.ContainsRune(field, comma) || strings.ContainsAny(field, "\"\r\n") {
 			return true
 		}
 	}
 
 	r1, _ := utf8.DecodeRuneInString(field)
 	return unicode.IsSpace(r1)
+
 }
