@@ -1,25 +1,19 @@
 package typedcsv
 
 type Value interface {
-	RawValue() string
-	Value() string
+	String() string
 	Quoted() bool
 	Valid() bool
 }
 
 type valueBackend struct {
-	rawValue string
-	value    string
-	quoted   bool
+	value  string
+	quoted bool
 }
 
 var _ Value = (*valueBackend)(nil)
 
-func (vb *valueBackend) RawValue() string {
-	return vb.rawValue
-}
-
-func (vb *valueBackend) Value() string {
+func (vb *valueBackend) String() string {
 	return vb.value
 }
 

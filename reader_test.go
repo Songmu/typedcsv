@@ -368,7 +368,17 @@ x,,,
 			}
 			r.TrimLeadingSpace = tt.TrimLeadingSpace
 
-			out, err := r.ReadAll()
+			records, err := r.ReadAll()
+			var out [][]string
+			if records != nil {
+				out = make([][]string, len(records))
+				for i, fields := range records {
+					out[i] = make([]string, len(fields))
+					for j, field := range fields {
+						out[i][j] = field.String()
+					}
+				}
+			}
 			if !reflect.DeepEqual(err, tt.Error) {
 				t.Errorf("ReadAll() error:\ngot  %v\nwant %v", err, tt.Error)
 			} else if !reflect.DeepEqual(out, tt.Output) {
