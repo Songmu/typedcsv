@@ -89,10 +89,9 @@ func (e *ParseError) Unwrap() error { return e.Err }
 
 // These are the errors that can be returned in ParseError.Err.
 var (
-	ErrTrailingComma = errors.New("extra delimiter at end of line") // Deprecated: No longer used.
-	ErrBareQuote     = errors.New("bare \" in non-quoted-field")
-	ErrQuote         = errors.New("extraneous or missing \" in quoted-field")
-	ErrFieldCount    = errors.New("wrong number of fields")
+	ErrBareQuote  = errors.New("bare \" in non-quoted-field")
+	ErrQuote      = errors.New("extraneous or missing \" in quoted-field")
+	ErrFieldCount = errors.New("wrong number of fields")
 )
 
 var errInvalidDelim = errors.New("csv: invalid field or comment delimiter")
@@ -138,8 +137,6 @@ type Reader struct {
 	// This is done even if the field delimiter, Comma, is white space.
 	TrimLeadingSpace bool
 
-	TrailingComma bool // Deprecated: No longer used.
-
 	r *bufio.Reader
 
 	// numLine is the current line being read in the CSV file.
@@ -147,16 +144,6 @@ type Reader struct {
 
 	// rawBuffer is a line buffer only used by the readLine method.
 	rawBuffer []byte
-
-	// recordBuffer holds the unescaped fields, one after another.
-	// The fields can be accessed by using the indexes in fieldIndexes.
-	// E.g., For the row `a,"b","c""d",e`, recordBuffer will contain `abc"de`
-	// and fieldIndexes will contain the indexes [1, 2, 5, 6].
-	recordBuffer []byte
-
-	// fieldIndexes is an index of fields inside recordBuffer.
-	// The i'th field ends at offset fieldIndexes[i] in recordBuffer.
-	fieldIndexes []int
 }
 
 // NewReader returns a new Reader that reads from r.
