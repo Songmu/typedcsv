@@ -3,7 +3,6 @@ package typedcsv
 type Value interface {
 	String() string
 	Quoted() bool
-	Valid() bool
 }
 
 type valueBackend struct {
@@ -21,6 +20,20 @@ func (vb *valueBackend) Quoted() bool {
 	return vb.quoted
 }
 
-func (vb *valueBackend) Valid() bool {
+type valueString struct {
+	value string
+}
+
+var _ Value = (*valueString)(nil)
+
+func (vb *valueString) String() string {
+	return vb.value
+}
+
+func (vb *valueString) Quoted() bool {
 	return true
+}
+
+func String(str string) Value {
+	return &valueString{value: str}
 }
