@@ -137,7 +137,9 @@ type Reader struct {
 	// This is done even if the field delimiter, Comma, is white space.
 	TrimLeadingSpace bool
 
-	Strict bool
+	Strict     bool
+	HasHeader  bool
+	readHeader bool
 
 	r *bufio.Reader
 
@@ -253,6 +255,9 @@ func (r *Reader) readRecord() ([]Value, error) {
 		return nil, errRead
 	}
 
+	isHeader := r.HasHeader && !r.readHeader
+	r.readHeader = true
+
 	// Parse each field in the record.
 	var err error
 	const quoteLen = len(`"`)
@@ -262,12 +267,21 @@ func (r *Reader) readRecord() ([]Value, error) {
 		recordBuf strings.Builder
 		ret       []Value
 		appendRet = func(quoted bool) ([]Value, error) {
-			v, err := (&valueAny{
-				value:  recordBuf.String(),
-				quoted: quoted,
-			}).guess(r.Strict)
-			if err != nil {
-				return nil, err
+			var v Value
+			if isHeader {
+				v = &valueHeader{
+					value: recordBuf.String(),
+					comma: r.Comma,
+				}
+			} else {
+				var err error
+				v, err = (&valueAny{
+					value:  recordBuf.String(),
+					quoted: quoted,
+				}).guess(r.Strict)
+				if err != nil {
+					return nil, err
+				}
 			}
 			ret = append(ret, v)
 			recordBuf.Reset()
