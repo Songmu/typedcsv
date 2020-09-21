@@ -6,6 +6,7 @@ type Type int
 
 const (
 	TypeAny Type = iota
+	TypeHeader
 	TypeString
 	TypeNumber
 	TypeBool

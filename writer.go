@@ -159,10 +159,6 @@ func (w *Writer) WriteAll(records [][]Value) error {
 // Not quoting the empty string also makes this package match the behavior
 // of Microsoft Excel and Google Drive.
 // For Postgres, quote the data terminating string `\.`.
-func (w *Writer) fieldNeedsQuotes(field string) bool {
-	return fieldNeedsQuotes(field, w.Comma)
-}
-
 func fieldNeedsQuotes(field string, comma rune) bool {
 
 	if field == "" {
