@@ -413,7 +413,7 @@ parseField:
 				t2 := ret[i].Type()
 				if t1 == 0 || t1 == TypeNull {
 					r.fieldTypes[i] = t2
-					break
+					continue
 				}
 				if r.Strict && !t1.compatible(t2) {
 					err = &ParseError{
