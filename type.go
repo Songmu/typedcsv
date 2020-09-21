@@ -14,6 +14,30 @@ const (
 	TypeTime
 )
 
+func (t Type) String() string {
+	switch t {
+	case TypeAny:
+		return "any"
+	case TypeHeader:
+		return "header"
+	case TypeString:
+		return "string"
+	case TypeNumber:
+		return "number"
+	case TypeBool:
+		return "bool"
+	case TypeNull:
+		return "null"
+	case TypeTime:
+		return "time"
+	}
+	return "unknown"
+}
+
+func (t Type) compatible(t2 Type) bool {
+	return t == TypeNull || t2 == TypeNull || t == t2
+}
+
 func String(str string) Value {
 	return &valueString{value: str}
 }

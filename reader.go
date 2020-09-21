@@ -132,6 +132,7 @@ type Reader struct {
 	// have the same field count. If FieldsPerRecord is negative, no check is
 	// made and records may have a variable number of fields.
 	FieldsPerRecord int
+	fieldTypes      []Type
 
 	// If TrimLeadingSpace is true, leading white space in a field is ignored.
 	// This is done even if the field delimiter, Comma, is white space.
@@ -394,10 +395,35 @@ parseField:
 	// Check or update the expected fields per record.
 	if r.FieldsPerRecord > 0 {
 		if len(ret) != r.FieldsPerRecord && err == nil {
-			err = &ParseError{StartLine: recLine, Line: recLine, Err: ErrFieldCount}
+			return ret, &ParseError{StartLine: recLine, Line: recLine, Err: ErrFieldCount}
 		}
 	} else if r.FieldsPerRecord == 0 {
 		r.FieldsPerRecord = len(ret)
+	}
+
+	// r.FieldsPerRecord would be set -1 in testing
+	fieldsPerRecord := len(ret)
+	if fieldsPerRecord > 0 {
+		if len(r.fieldTypes) == 0 {
+			r.fieldTypes = make([]Type, fieldsPerRecord)
+		}
+		if ret[0].Type() != TypeHeader {
+			for i := 0; i < fieldsPerRecord; i++ {
+				t1 := r.fieldTypes[i]
+				t2 := ret[i].Type()
+				if t1 == 0 || t1 == TypeNull {
+					r.fieldTypes[i] = t2
+					break
+				}
+				if r.Strict && !t1.compatible(t2) {
+					err = &ParseError{
+						StartLine: recLine,
+						Line:      recLine,
+						Err:       fmt.Errorf("the value of field #%d (value: %q, type: %q) is imcompatible with existing type %q", i, ret[i], t2, t1),
+					}
+				}
+			}
+		}
 	}
 	return ret, err
 }
