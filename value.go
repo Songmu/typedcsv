@@ -63,6 +63,25 @@ func (vb *valueAny) guess(strict bool) (Value, error) {
 	return nil, fmt.Errorf("can't guess the type for unquoted value: %s", vb.value)
 }
 
+type valueHeader struct {
+	value string
+	comma rune
+}
+
+var _ Value = (*valueHeader)(nil)
+
+func (vh *valueHeader) Type() Type {
+	return TypeHeader
+}
+
+func (vh *valueHeader) String() string {
+	return vh.value
+}
+
+func (vh *valueHeader) Quoted() bool {
+	return fieldNeedsQuotes(vh.value, vh.comma)
+}
+
 type valueString struct {
 	value string
 }
